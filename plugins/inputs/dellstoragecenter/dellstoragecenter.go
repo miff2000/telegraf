@@ -2,6 +2,7 @@ package dellstoragecenter
 
 import (
 	"strconv"
+	"time"
 
 	"github.com/influxdata/telegraf"
 	"github.com/influxdata/telegraf/plugins/inputs"
@@ -22,7 +23,7 @@ type (
 
 // Description Returns the description of the plugin
 func (d *Dellstoragecenter) Description() string {
-	return "Return performance data from a Dell Storage Data Collector endpoint."
+	return "Return performance data for all volumes in a Dell Storage Center endpoint."
 }
 
 // SampleConfig Returns an sample configuration for the Telegraf config file
@@ -62,22 +63,21 @@ func (d *Dellstoragecenter) Gather(acc telegraf.Accumulator) error {
 		return err
 	}
 	for _, volume := range volumelist {
-		scVolID := volume.InstanceID
-		volumestats, err := connection.GetVolumeIoStats(scVolID)
-		volumestat := volumestats[len(volumestats)-1]
+
+		volumestats, err := connection.GetVolumeIoStats(volume.InstanceID)
 		if err != nil {
 			return err
 		}
 
 		tags := map[string]string{
-			"scName":   volume.SCName,
-			"scVolume": volume.Name,
+			"scName":     volume.SCName,
+			"scVolume":   volume.Name,
+			"instanceId": volume.InstanceID,
 		}
 
+		volumestat := volumestats[len(volumestats)-1]
+
 		fields := map[string]interface{}{
-			"time":             volumestat.Time,
-			"scName":           volumestat.SCName,
-			"instanceId":       volumestat.InstanceID,
 			"readIops":         volumestat.ReadIOPS,
 			"writeIops":        volumestat.WriteIOPS,
 			"totalIops":        volumestat.TotalIOPS,
@@ -91,7 +91,12 @@ func (d *Dellstoragecenter) Gather(acc telegraf.Accumulator) error {
 			"xferLatency":      volumestat.XferLatency,
 		}
 
-		acc.AddFields("dellstoragecenter", fields, tags)
+		timestamp, err := time.Parse("2006-01-02T15:04:05Z", volumestat.Time)
+		if err != nil {
+			return err
+		}
+
+		acc.AddFields("dellstoragecenter", fields, tags, timestamp)
 	}
 
 	return nil
