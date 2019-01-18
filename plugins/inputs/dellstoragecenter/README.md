@@ -1,6 +1,18 @@
 # DellStorageCenter Input Plugin
 
-The dellstoragecenter input plugin gathers volume performance data
+The dellstoragecenter input plugin gathers volume performance data.
+
+## A Few Notable Things...
+### Storage Center Timestamps Used  
+The timestamp returned by the Storage Center's JSON responses is used as the timestamp for the metric that Telegraf returns. The result of this is, although Telegraf polls the Storage Center API on a 1 minute interval by default, new metrics will only be produced if the timestamp differs. This stops points being added every minute when your metrics data hasn't changed, and makes your graphing apps like Grafana draw more meaningful graphs.
+
+### History Filter For I/O Usage 
+The Storage Center uses the concept of a History Filter to select the IO Usage statistics you require. Within that you specify a StartTime and EndTime. The StartTime is presently hard-coded at **`now() - 15 minutes`** as, from what I can tell, the Storage Center produces its IO Usage statistics at least once every 15 minutes. If you know this to be incorrect, please raise an issue for it.
+
+This value is used to limit the response size from the Storage Center, so we can retrieve only the last I/O Usage information.
+
+### History Filter For Storage Usage
+Similarly to the History Filter For I/O Usage, the History Filter for Storage Usage is configured with a StartTime of **`now() - 240 minutes`** (4 hours). This is because the Storage Usage metrics are produced every 4 hours. Again, if you know this to be incorrect, please raise an issue for it.  
 
 ### Configuration:
 
