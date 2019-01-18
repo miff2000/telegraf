@@ -16,8 +16,8 @@ import (
 )
 
 type (
-	// ScVolume This is a list of returned ScVolumes
-	ScVolume struct {
+	// scVolume is a struct{} for parsing Storage Center Volume details from JSON.
+	scVolume struct {
 		Name       string `json:"name"`
 		InstanceID string `json:"instanceId"`
 		SCName     string `json:"scName"`
@@ -25,7 +25,7 @@ type (
 		Status     string `json:"status"`
 	}
 
-	// scVolumeIoUsageStat These are the IO stats returned for a ScVolume
+	// scVolumeIoUsageStat is a struct{} for parsing I/O Usage info from the JSON returned by the API.
 	scVolumeIoUsageStat struct {
 		Time             string `json:"time"`
 		SCName           string `json:"scName"`
@@ -44,14 +44,15 @@ type (
 		WriteLatency     int    `json:"writeLatency"`
 	}
 
-	ScVolumeStorageUsageStat struct {
+	// scVolumeStorageUsageStat is a struct{} for parsing Storage Usage info from the JSON returned by the API.
+	scVolumeStorageUsageStat struct {
 		ActiveSpace                                   string  `json:"activeSpace"`
 		ActiveSpaceOnDisk                             string  `json:"activeSpaceOnDisk"`
 		ActualSpace                                   string  `json:"actualSpace"`
 		ConfiguredSpace                               string  `json:"configuredSpace"`
 		EstimatedDataReductionSpaceSavings            string  `json:"estimatedDataReductionSpaceSavings"`
 		EstimatedDiskSpaceSavedByCompression          string  `json:"estimatedDiskSpaceSavedByCompression"`
-		EstimatedDiskSpaceSavedByDeduplication        string  `json:"estimatedDiskSpaceSavedByDeduplicated"`
+		EstimatedDiskSpaceSavedByDeduplicated         string  `json:"estimatedDiskSpaceSavedByDeduplicated"`
 		EstimatedNonDeduplicatedToDuplicatedPageRatio float64 `json:"estimatedNonDeduplicatedToDuplicatedPageRatio"`
 		EstimatedPercentCompressed                    float64 `json:"estimatedPercentCompressed"`
 		EstimatedPercentDeduplicated                  float64 `json:"estimatedPercentDeduplicated"`
@@ -72,6 +73,7 @@ type (
 		TotalDiskSpace                                string  `json:"totalDiskSpace"`
 	}
 
+	// apiConnection represents a connection to the API
 	apiConnection struct {
 		BaseURL    string
 		APIVersion string
@@ -81,10 +83,12 @@ type (
 		client     *http.Client
 	}
 
-	historicalIOUsageRequest struct {
+	// historicalUsageRequest represents a JSON format request, embedding historicalFilter within.
+	historicalUsageRequest struct {
 		HistoricalFilter historicalFilter `json:"HistoricalFilter"`
 	}
 
+	// historicalFilter creates a History Filter in the format the Storage Center expects it.
 	historicalFilter struct {
 		MaxCountReturn int    `json:"MaxCountReturn"`
 		StartTime      string `json:"StartTime"`
@@ -115,11 +119,11 @@ func newAPIConnection(baseURL string, apiVersion string, username string, passwo
 	}
 }
 
-func createHistoricalFilter(minusMins int) *historicalIOUsageRequest {
+func createHistoricalFilter(minusMins int) *historicalUsageRequest {
 
 	dMinusMins := time.Duration(-minusMins) * time.Minute
 
-	return &historicalIOUsageRequest{
+	return &historicalUsageRequest{
 		HistoricalFilter: historicalFilter{
 			MaxCountReturn: 1,
 			StartTime:      time.Now().Add(dMinusMins).Format("2006-01-02T15:04:05-07:00"),
@@ -167,7 +171,7 @@ func (a *apiConnection) DecodeResponseBody(body io.ReadCloser, out interface{}) 
 
 }
 
-func (a *apiConnection) GetVolumeList() ([]ScVolume, error) {
+func (a *apiConnection) GetVolumeList() ([]scVolume, error) {
 	response, err := a.post("/StorageCenter/ScVolume/GetList", nil)
 	if err != nil {
 		return nil, err
@@ -175,7 +179,7 @@ func (a *apiConnection) GetVolumeList() ([]ScVolume, error) {
 
 	defer response.Body.Close()
 
-	ScVolume := []ScVolume{}
+	ScVolume := []scVolume{}
 	err = a.DecodeResponseBody(response.Body, &ScVolume)
 	if err != nil {
 		return nil, err
@@ -202,7 +206,7 @@ func (a *apiConnection) GetVolumeIoUsageStats(scVolID string) ([]scVolumeIoUsage
 	return ScVolumeIoUsageStat, nil
 }
 
-func (a *apiConnection) GetVolumeStorageUsageStats(scVolID string) ([]ScVolumeStorageUsageStat, error) {
+func (a *apiConnection) GetVolumeStorageUsageStats(scVolID string) ([]scVolumeStorageUsageStat, error) {
 	body := createHistoricalFilter(240)
 
 	response, err := a.post("/StorageCenter/ScVolume/"+scVolID+"/GetHistoricalStorageUsage", body)
@@ -210,7 +214,7 @@ func (a *apiConnection) GetVolumeStorageUsageStats(scVolID string) ([]ScVolumeSt
 		return nil, err
 	}
 
-	ScVolumeStorageUsageStat := []ScVolumeStorageUsageStat{}
+	ScVolumeStorageUsageStat := []scVolumeStorageUsageStat{}
 	err = a.DecodeResponseBody(response.Body, &ScVolumeStorageUsageStat)
 	if err != nil {
 		return nil, err
