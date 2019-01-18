@@ -20,10 +20,10 @@ The dellstoragecenter input plugin gathers volume performance data
   # password = "admin"
 
   ## Version of the Dell API to use
-  # dell-api-version = 4.1
+  dell-api-version = 4.1
 
   ## Interval to poll for stats
-  # interval = "60s"
+  interval = "60s"
 ```
 
 ### Measurements & Fields:
@@ -34,62 +34,83 @@ The dellstoragecenter input plugin gathers volume performance data
     - scVolume (Volume name, as shown in the Storage Center)
     - instanceId (Volume unique identifier, in the format 12345.1)
   - fields:
-    - readIops (integer, counter)
-    - writeIops (integer, counter)
-    - totalIops (integer, counter)
-    - ioPending (integer, counter)
-    - readKbPerSecond (integer, counter, kilobytes)
-    - writeKbPerSecond (integer, counter, kilobytes)
-    - totalKbPerSecond (integer, counter, kilobytes)
-    - averageKbPerIo (integer, counter, kilobytes)
-    - readLatency (integer, counter, milliseconds)
-    - writeLatency (integer, counter, milliseconds)
-    - xferLatency (integer, counter, milliseconds)
+    - readIops (integer)
+    - writeIops (integer)
+    - totalIops (integer)
+    - ioPending (integer)
+    - readKbPerSecond (integer, kilobytes)
+    - writeKbPerSecond (integer, kilobytes)
+    - totalKbPerSecond (integer, kilobytes)
+    - averageKbPerIo (integer, kilobytes)
+    - readLatency (integer, milliseconds)
+    - writeLatency (integer, milliseconds)
+    - xferLatency (integer, milliseconds)
+    - activeSpace (integer, bytes)
+    - activeSpaceOnDisk (integer, bytes)
+    - actualSpace (integer, bytes)
+    - configuredSpace (integer, bytes)
+    - estimatedDataReductionSpaceSavings (integer, bytes)
+    - estimatedDiskSpaceSavedByCompression (integer, bytes)
+    - estimatedDiskSpaceSavedByDeduplicated (integer, bytes)
+    - estimatedNonDeduplicatedToDuplicatedPageRatio (float64)
+    - estimatedPercentCompressed (float64)
+    - estimatedPercentDeduplicated (float)
+    - estimatedUncompressedToCompressedPageRatio (float64)
+    - freeSpace (integer)
+    - instanceId (string)
+    - instanceName (string)
+    - name (string)
+    - objectType (string)
+    - raidOverhead (integer, bytes)
+    - replaySpace (integer, bytes)
+    - savingsVsRaidTen (integer, bytes)
+    - scName (string)
+    - scSerialNumber (integer)
+    - sharedSpace (integer, bytes)
+    - snapshotOverheadOnDisk (integer, bytes)
+    - time (timestamp)
+    - totalDiskSpace (integer, bytes)
 
 #### `readIops`, `writeIops` & `totalIops`:
 
-  **Todo**
+* Read IO/Second for the Volume
+* Write IO/Second for the Volume
+* Total IO/Second for the Volume	
 
 #### `ioPending`
 
-  **Todo**
+* IO that is pending for the Volume
 
 #### `readKbPerSecond`, `writeKbPerSecond` & `totalKbPerSecond`
 
-  **Todo**
+* Read KB/Second for the Volume	
+* Write KB/Second for the Volume	
+* Total KB/Second for the Volume	
 
 #### `averageKbPerIo`
 
-  **Todo**
+* The average IO size in KB for the Volume
 
 #### `readLatency`, `writeLatency` & `xferLatency`
 
-#### `io_time`:
+* Read Latency (in microseconds) for the Volume
+* Write Latency (in microseconds) for the Volume
+* Transfer Latency for the Volume
 
-This value counts the number of milliseconds during which the device has
-had I/O requests queued.
+#### `activeSpace`, ``, ``, ``, ``,  
 
-#### `weighted_io_time`:
 
-This value counts the number of milliseconds that I/O requests have waited
-on this block device.  If there are multiple I/O requests waiting, this
-value will increase as the product of the number of milliseconds times the
-number of requests waiting (see `read_time` above for an example).
 
-#### `iops_in_progress`:
-
-This value counts the number of I/O requests that have been issued to
-the device driver but have not yet completed.  It does not include I/O
-requests that are in the queue but not yet issued to the device driver.
 
 ### Sample Queries:
-
 #### Calculate percent IO utilization per disk and host:
+* **todo**
 ```
 SELECT non_negative_derivative(last("io_time"),1ms) FROM "diskio" WHERE time > now() - 30m GROUP BY "host","name",time(60s)
 ```
 
 #### Calculate average queue depth:
+* **todo**
 `iops_in_progress` will give you an instantaneous value. This will give you the average between polling intervals.
 ```
 SELECT non_negative_derivative(last("weighted_io_time",1ms)) from "diskio" WHERE time > now() - 30m GROUP BY "host","name",time(60s)
@@ -97,6 +118,7 @@ SELECT non_negative_derivative(last("weighted_io_time",1ms)) from "diskio" WHERE
 
 ### Example Output:
 
+* **todo**
 ```
 diskio,name=sda weighted_io_time=8411917i,read_time=7446444i,write_time=971489i,io_time=866197i,write_bytes=5397686272i,iops_in_progress=0i,reads=2970519i,writes=361139i,read_bytes=119528903168i 1502467254359000000
 diskio,name=sda1 reads=2149i,read_bytes=10753536i,write_bytes=20697088i,write_time=346i,weighted_io_time=505i,writes=2110i,read_time=161i,io_time=208i,iops_in_progress=0i 1502467254359000000

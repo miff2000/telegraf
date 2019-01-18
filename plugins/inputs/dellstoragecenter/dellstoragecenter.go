@@ -22,12 +22,12 @@ type (
 	}
 )
 
-// Description Returns the description of the plugin
+// Description returns a string describing of the plugin
 func (d *Dellstoragecenter) Description() string {
 	return "Return performance data for all volumes in a Dell Storage Center endpoint."
 }
 
-// SampleConfig Returns an sample configuration for the Telegraf config file
+// SampleConfig returns an sample configuration for the Telegraf config file
 func (d *Dellstoragecenter) SampleConfig() string {
 	return `
   ## IP address the Data Collector is listening on
@@ -50,18 +50,17 @@ func (d *Dellstoragecenter) SampleConfig() string {
 	`
 }
 
-// Gather Collects Input data and pushes to Telegraf
 func (d *Dellstoragecenter) Gather(acc telegraf.Accumulator) error {
 	baseURL := "https://" + d.IPAddress + ":" + strconv.Itoa(d.Port)
 	apiConn := newAPIConnection(baseURL, d.DellAPIVersion, d.Username, d.Password)
 	err := apiConn.Login()
 	if err != nil {
-		return err
+		acc.AddError(err)
 	}
 
 	scVolumeList, err := apiConn.GetVolumeList()
 	if err != nil {
-		return err
+		acc.AddError(err)
 	}
 	for _, scVolume := range scVolumeList {
 
@@ -73,13 +72,13 @@ func (d *Dellstoragecenter) Gather(acc telegraf.Accumulator) error {
 
 		fields, timestamp, err := d.gatherIoUsageStat(apiConn, scVolume)
 		if err != nil {
-			return err
+			acc.AddError(err)
 		}
 		acc.AddFields("dellstoragecenter", fields, tags, timestamp)
 
 		fields, timestamp, err = d.gatherStorageUsageStat(apiConn, scVolume)
 		if err != nil {
-			return err
+			acc.AddError(err)
 		}
 		acc.AddFields("dellstoragecenter", fields, tags, timestamp)
 	}
@@ -87,25 +86,31 @@ func (d *Dellstoragecenter) Gather(acc telegraf.Accumulator) error {
 	return nil
 }
 
-func (d *Dellstoragecenter) gatherIoUsageStat(apiConn *apiConnection, scVolume ScVolume) (map[string]interface{}, time.Time, error) {
+func (d *Dellstoragecenter) gatherIoUsageStat(apiConn *apiConnection, scVolume scVolume) (map[string]interface{}, time.Time, error) {
 
 	volumeIoUsageStats, err := apiConn.GetVolumeIoUsageStats(scVolume.InstanceID)
 	if err != nil {
 		return nil, time.Time{}, err
 	}
 
+	if len(volumeIoUsageStats) < 1 {
+		return map[string]interface{}{}, time.Time{}, nil
+	}
+
 	volStat := volumeIoUsageStats[len(volumeIoUsageStats)-1]
 
 	fields := map[string]interface{}{
-		"readIops":         volStat.ReadIOPS,
-		"writeIops":        volStat.WriteIOPS,
-		"totalIops":        volStat.TotalIOPS,
-		"ioPending":        volStat.IOPending,
-		"readKbPerSecond":  volStat.ReadKbPerSecond,
-		"writeKbPerSecond": volStat.WriteKbPerSecond,
-		"totalKbPerSecond": volStat.TotalKbPerSecond,
 		"averageKbPerIo":   volStat.AverageKbPerIO,
+		"instanceId":       volStat.InstanceID,
+		"ioPending":        volStat.IOPending,
+		"readIops":         volStat.ReadIOPS,
+		"readKbPerSecond":  volStat.ReadKbPerSecond,
 		"readLatency":      volStat.ReadLatency,
+		"scName":           volStat.SCName,
+		"totalIops":        volStat.TotalIOPS,
+		"totalKbPerSecond": volStat.TotalKbPerSecond,
+		"writeKbPerSecond": volStat.WriteKbPerSecond,
+		"writeIops":        volStat.WriteIOPS,
 		"writeLatency":     volStat.WriteLatency,
 		"xferLatency":      volStat.XferLatency,
 	}
@@ -118,7 +123,7 @@ func (d *Dellstoragecenter) gatherIoUsageStat(apiConn *apiConnection, scVolume S
 	return fields, timestamp, nil
 }
 
-func (d *Dellstoragecenter) gatherStorageUsageStat(apiConn *apiConnection, scVolume ScVolume) (map[string]interface{}, time.Time, error) {
+func (d *Dellstoragecenter) gatherStorageUsageStat(apiConn *apiConnection, scVolume scVolume) (map[string]interface{}, time.Time, error) {
 
 	volumeStorageUsageStats, err := apiConn.GetVolumeStorageUsageStats(scVolume.InstanceID)
 	if err != nil {
@@ -138,7 +143,7 @@ func (d *Dellstoragecenter) gatherStorageUsageStat(apiConn *apiConnection, scVol
 		"configuredSpace":                               bytesStringToInt(volStat.ConfiguredSpace),
 		"estimatedDataReductionSpaceSavings":            bytesStringToInt(volStat.EstimatedDataReductionSpaceSavings),
 		"estimatedDiskSpaceSavedByCompression":          bytesStringToInt(volStat.EstimatedDiskSpaceSavedByCompression),
-		"estimatedDiskSpaceSavedByDeduplicated":         bytesStringToInt(volStat.EstimatedDiskSpaceSavedByDeduplication),
+		"estimatedDiskSpaceSavedByDeduplicated":         bytesStringToInt(volStat.EstimatedDiskSpaceSavedByDeduplicated),
 		"estimatedNonDeduplicatedToDuplicatedPageRatio": volStat.EstimatedNonDeduplicatedToDuplicatedPageRatio,
 		"estimatedPercentCompressed":                    volStat.EstimatedPercentCompressed,
 		"estimatedPercentDeduplicated":                  volStat.EstimatedPercentDeduplicated,
